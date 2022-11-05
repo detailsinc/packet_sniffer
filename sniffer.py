@@ -1,28 +1,24 @@
 import socket
-import struct
 
+
+# Get HOST IP address
+HOST = socket.gethostbyname(socket.gethostname())
 
 
 def main():
-    connection = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+    # Create a raw socket and bind to it
+    connection = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
+    connection.bind((HOST, 0))
 
-    while True:
-        raw_data, address = connection.recvfrom(65536)
-        destination_mac, source_mac, eth_protocol, data = ethernet_frame(raw_data)
-        print('\nEthernet Frame: ')
-        print('Destination: {}, Source: {}, Protocol: {}'.format(destination_mac, source_mac, eth_protocol))
+    # Include IP Header
+    connection.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
 
-#Break down the ethernet frame
-def ethernet_frame(data):
-    destination_mac = struct.unpack('! 6s', data[:6])
-    source_mac = struct.unpack('! 6s', data[7:12])
-    protocol = struct.unpack('! H', data[13:14])
-    return get_mac_address(destination_mac), get_mac_address(source_mac), socket.htons(protocol), data[14:]
+    # Promiscuous Mode ON for all packets
+    connection.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
 
-#Get human readable MAC address (AA:BB:CC:DD:EE:FF)
-def get_mac_address(bytes):
-    byte_str = map('{:02X}'.format, bytes)
-    mac_address = ':'.join(byte_str)
-    return mac_address
+    print(connection.recvfrom(65565))
+
+    # Promiscuous Mode OFF
+    connection.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
 
 main()
